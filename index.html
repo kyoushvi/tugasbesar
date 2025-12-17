@@ -1,570 +1,444 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IoT Sensor Monitor</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IoT Sensor Monitor</title>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ["Outfit", "sans-serif"] },
+          colors: {
+            dark: { bg: "#0F0F0F", card: "#1A1A1A" },
+            brand: {
+              teal: "#00BCD4",
+              red: "#FF6B6B",
+              orange: "#FFA500",
+              green: "#4CAF50",
+            },
+          },
+        },
+      },
+    };
+  </script>
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Outfit', 'sans-serif'],
-                    },
-                    colors: {
-                        dark: {
-                            bg: '#0F0F0F',
-                            card: '#1A1A1A',
-                        },
-                        brand: {
-                            teal: '#00BCD4',
-                            red: '#FF6B6B',
-                            orange: '#FFA500',
-                            green: '#4CAF50',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-
-    <style>
-        /* Glass morphism effect */
-        .glass-panel {
-            background: rgba(26, 26, 26, 0.5);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-        }
-
-        /* Smooth animations */
-        @keyframes pulse-slow {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.8; }
-        }
-
-        .animate-pulse-slow {
-            animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        /* Sensor card hover effects */
-        .sensor-card {
-            transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .sensor-card:hover {
-            transform: translateY(-4px);
-        }
-
-        /* Status colors */
-        .status-safe { background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1px solid #4CAF50; }
-        .status-warning { background: rgba(255, 165, 0, 0.2); color: #FFA500; border: 1px solid #FFA500; }
-        .status-danger { background: rgba(255, 107, 107, 0.2); color: #FF6B6B; border: 1px solid #FF6B6B; }
-    </style>
+  <style>
+    .glass-panel { background: rgba(26, 26, 26, 0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    @keyframes pulse-slow { 0%,100%{opacity:1;} 50%{opacity:0.8;} }
+    .animate-pulse-slow { animation: pulse-slow 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+    .sensor-card { transition: all 300ms cubic-bezier(0.16,1,0.3,1); }
+    .sensor-card:hover { transform: translateY(-4px); }
+    .status-safe { background: rgba(76,175,80,0.2); color:#4CAF50; border:1px solid #4CAF50; }
+    .status-warning { background: rgba(255,165,0,0.2); color:#FFA500; border:1px solid #FFA500; }
+    .status-danger { background: rgba(255,107,107,0.2); color:#FF6B6B; border:1px solid #FF6B6B; }
+  </style>
 </head>
 
 <body class="bg-dark-bg text-gray-200 font-sans min-h-screen p-4 md:p-8">
+  <!-- HEADER -->
+  <header class="glass-panel mb-8 p-6 flex flex-col md:flex-row justify-between items-center bg-dark-card rounded-2xl border border-gray-800">
+    <div class="mb-4 md:mb-0">
+      <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-teal to-blue-500">
+        IoT Sensor API & Gas Monitor
+      </h1>
+      <p class="text-gray-400 mt-1">Real-time monitoring berbasis Firebase</p>
+    </div>
+    <div id="systemStatusBadge"
+         class="px-6 py-2 rounded-full font-bold text-lg transition-all duration-300 bg-gray-800 text-gray-400">
+      🔄 Menghubungkan...
+    </div>
+  </header>
 
-    <!-- Header -->
-    <header
-        class="glass-panel mb-8 p-6 flex flex-col md:flex-row justify-between items-center bg-dark-card rounded-2xl border border-gray-800">
-        <div class="mb-4 md:mb-0">
-            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-teal to-blue-500">
-                IoT Sensor API & Gas Monitor
-            </h1>
-            <p class="text-gray-400 mt-1">Real-time monitoring berbasis Firebase</p>
-        </div>
+  <!-- ALERT -->
+  <div id="alertBox" class="hidden mb-8 p-6 rounded-2xl bg-brand-red/20 border-2 border-brand-red animate-pulse-slow">
+    <div class="flex items-start">
+      <div class="text-4xl mr-4">🚨</div>
+      <div>
+        <h2 class="text-xl font-bold text-brand-red mb-2">PERINGATAN BAHAYA TERDETEKSI!</h2>
+        <ul id="alertList" class="space-y-1 text-white/90"></ul>
+      </div>
+    </div>
+  </div>
 
-        <div id="systemStatusBadge"
-            class="px-6 py-2 rounded-full font-bold text-lg transition-all duration-300 bg-gray-800 text-gray-400">
-            <!-- Injected via JS -->
-            🔄 Menghubungkan...
+  <!-- SENSOR GRID -->
+  <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+    <!-- Flame -->
+    <div id="card-flame" class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 hover:shadow-lg hover:border-brand-teal/50">
+      <div class="flex justify-between items-start mb-4">
+        <div class="text-4xl">🔥</div>
+        <div class="text-right">
+          <h3 class="text-gray-400 text-sm uppercase tracking-wider">Api / Flame</h3>
+          <p id="val-flame" class="text-3xl font-bold text-white">--</p>
         </div>
-    </header>
-
-    <!-- Alert Box -->
-    <div id="alertBox" class="hidden mb-8 p-6 rounded-2xl bg-brand-red/20 border-2 border-brand-red animate-pulse-slow">
-        <div class="flex items-start">
-            <div class="text-4xl mr-4">🚨</div>
-            <div>
-                <h2 class="text-xl font-bold text-brand-red mb-2">PERINGATAN BAHAYA TERDETEKSI!</h2>
-                <ul id="alertList" class="space-y-1 text-white/90">
-                    <!-- Dynamic Alert Items -->
-                </ul>
-            </div>
-        </div>
+      </div>
+      <div id="status-flame" class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+        Waiting data...
+      </div>
     </div>
 
-    <!-- Sensor Grid -->
-    <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-
-        <!-- Flame Sensor -->
-        <div id="card-flame"
-            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
-            <div class="flex justify-between items-start mb-4">
-                <div class="text-4xl">🔥</div>
-                <div class="text-right">
-                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">Api / Flame</h3>
-                    <p id="val-flame" class="text-3xl font-bold text-white">--</p>
-                </div>
-            </div>
-            <div id="status-flame"
-                class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
-                Waiting data...
-            </div>
+    <!-- Humidity -->
+    <div id="card-humidity" class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 hover:shadow-lg hover:border-brand-teal/50">
+      <div class="flex justify-between items-start mb-4">
+        <div class="text-4xl">💧</div>
+        <div class="text-right">
+          <h3 class="text-gray-400 text-sm uppercase tracking-wider">Kelembaban</h3>
+          <p id="val-humidity" class="text-3xl font-bold text-white">-- %</p>
         </div>
-
-        <!-- Humidity Sensor -->
-        <div id="card-humidity"
-            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
-            <div class="flex justify-between items-start mb-4">
-                <div class="text-4xl">💧</div>
-                <div class="text-right">
-                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">Kelembaban</h3>
-                    <p id="val-humidity" class="text-3xl font-bold text-white">-- %</p>
-                </div>
-            </div>
-            <div id="status-humidity"
-                class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
-                Waiting data...
-            </div>
-        </div>
-
-        <!-- MQ2 Gas Sensor -->
-        <div id="card-mq2"
-            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
-            <div class="flex justify-between items-start mb-4">
-                <div class="text-4xl">⚠️</div>
-                <div class="text-right">
-                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">Gas MQ2</h3>
-                    <p id="val-mq2" class="text-3xl font-bold text-white">-- PPM</p>
-                </div>
-            </div>
-            <div id="status-mq2" class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
-                Waiting data...
-            </div>
-        </div>
-
-        <!-- MQ7 CO Sensor -->
-        <div id="card-mq7"
-            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
-            <div class="flex justify-between items-start mb-4">
-                <div class="text-4xl">☠️</div>
-                <div class="text-right">
-                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">CO MQ7</h3>
-                    <p id="val-mq7" class="text-3xl font-bold text-white">-- PPM</p>
-                </div>
-            </div>
-            <div id="status-mq7" class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
-                Waiting data...
-            </div>
-        </div>
-
-        <!-- Temperature Sensor -->
-        <div id="card-temperature"
-            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
-            <div class="flex justify-between items-start mb-4">
-                <div class="text-4xl">🌡️</div>
-                <div class="text-right">
-                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">Suhu</h3>
-                    <p id="val-temperature" class="text-3xl font-bold text-white">-- °C</p>
-                </div>
-            </div>
-            <div id="status-temperature"
-                class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
-                Waiting data...
-            </div>
-        </div>
-
-        <!-- Relay Status -->
-        <div id="card-relay"
-            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
-            <div class="flex justify-between items-start mb-4">
-                <div class="text-4xl">⚡</div>
-                <div class="text-right">
-                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">Status Relay</h3>
-                    <p id="val-relay" class="text-3xl font-bold text-white">--</p>
-                </div>
-            </div>
-            <div id="status-relay"
-                class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
-                Waiting data...
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Charts Section -->
-    <div class="glass-panel p-6 rounded-2xl border border-gray-800 mb-8">
-        <h2 class="text-2xl font-bold mb-4 text-brand-teal flex items-center">
-            <span class="mr-3">📈</span> Live Trends
-        </h2>
-        <div class="h-64 md:h-80 w-full">
-            <canvas id="sensorChart"></canvas>
-        </div>
+      </div>
+      <div id="status-humidity" class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+        Waiting data...
+      </div>
     </div>
 
-    <!-- Control & History Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        <!-- Relay Control -->
-        <div class="glass-panel p-6 rounded-2xl bg-dark-card border border-gray-800">
-            <h2 class="text-2xl font-bold mb-6 text-brand-teal flex items-center">
-                <span class="mr-3">🎮</span> Kontrol Relay
-            </h2>
-
-            <div class="flex flex-col sm:flex-row gap-4 mb-6">
-                <button onclick="controlRelay('ON')"
-                    class="flex-1 py-4 px-6 rounded-xl font-bold text-white bg-brand-green hover:bg-green-600 active:scale-95 transition-all shadow-lg shadow-green-900/20 flex justify-center items-center group">
-                    <span class="mr-2">⚡</span> NYALAKAN
-                </button>
-                <button onclick="controlRelay('OFF')"
-                    class="flex-1 py-4 px-6 rounded-xl font-bold text-white bg-brand-red hover:bg-red-600 active:scale-95 transition-all shadow-lg shadow-red-900/20 flex justify-center items-center group">
-                    <span class="mr-2">🚫</span> MATIKAN
-                </button>
-            </div>
-            <div class="text-center text-gray-400 bg-black/20 p-4 rounded-xl">
-                Status saat ini: <span id="ctrl-relay-status" class="font-bold text-white">--</span>
-            </div>
+    <!-- MQ2 -->
+    <div id="card-mq2" class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 hover:shadow-lg hover:border-brand-teal/50">
+      <div class="flex justify-between items-start mb-4">
+        <div class="text-4xl">⚠️</div>
+        <div class="text-right">
+          <h3 class="text-gray-400 text-sm uppercase tracking-wider">Gas MQ2</h3>
+          <p id="val-mq2" class="text-3xl font-bold text-white">-- PPM</p>
         </div>
-
-        <!-- History/Log -->
-        <div class="glass-panel p-6 rounded-2xl bg-dark-card border border-gray-800">
-            <h2 class="text-2xl font-bold mb-6 text-brand-teal flex items-center">
-                <span class="mr-3">📜</span> Log Aktivitas
-            </h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-gray-400 uppercase bg-black/20">
-                        <tr>
-                            <th class="px-3 py-2 rounded-l-lg">Waktu</th>
-                            <th class="px-3 py-2">Sensor Update</th>
-                            <th class="px-3 py-2 rounded-r-lg">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyTableBody" class="divide-y divide-gray-800">
-                        <!-- Filled by JS -->
-                        <tr>
-                            <td colspan="3" class="px-3 py-4 text-center text-gray-500">Menunggu data...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+      </div>
+      <div id="status-mq2" class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+        Waiting data...
+      </div>
     </div>
 
-    <!-- Firebase Initialization Script -->
-    <script>
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyBpTVXu0R8ziWft_9P0PyFMlCJiozqZ-ZI",
-            authDomain: "iot-sensor-api-dan-gas-1985d.firebaseapp.com",
-            databaseURL: "https://iot-sensor-api-dan-gas-1985d-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "iot-sensor-api-dan-gas-1985d",
-            storageBucket: "iot-sensor-api-dan-gas-1985d.firebasestorage.app",
-            messagingSenderId: "924168889722",
-            appId: "1:924168889722:web:d351d90117f0949ae7e2c3"
-        };
+    <!-- MQ7 -->
+    <div id="card-mq7" class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 hover:shadow-lg hover:border-brand-teal/50">
+      <div class="flex justify-between items-start mb-4">
+        <div class="text-4xl">☠️</div>
+        <div class="text-right">
+          <h3 class="text-gray-400 text-sm uppercase tracking-wider">CO MQ7</h3>
+          <p id="val-mq7" class="text-3xl font-bold text-white">-- PPM</p>
+        </div>
+      </div>
+      <div id="status-mq7" class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+        Waiting data...
+      </div>
+    </div>
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+    <!-- Temperature -->
+    <div id="card-temperature" class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 hover:shadow-lg hover:border-brand-teal/50">
+      <div class="flex justify-between items-start mb-4">
+        <div class="text-4xl">🌡️</div>
+        <div class="text-right">
+          <h3 class="text-gray-400 text-sm uppercase tracking-wider">Suhu</h3>
+          <p id="val-temperature" class="text-3xl font-bold text-white">-- °C</p>
+        </div>
+      </div>
+      <div id="status-temperature" class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+        Waiting data...
+      </div>
+    </div>
 
-        // Global variables for sensor data
-        let sensorData = {
-            flame: 0,
-            humidity: 0,
-            mq2: 0,
-            mq7: 0,
-            temperature: 0,
-            relay: 'OFF'
-        };
+    <!-- Relay -->
+    <div id="card-relay" class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 hover:shadow-lg hover:border-brand-teal/50">
+      <div class="flex justify-between items-start mb-4">
+        <div class="text-4xl">⚡</div>
+        <div class="text-right">
+          <h3 class="text-gray-400 text-sm uppercase tracking-wider">Status Relay</h3>
+          <p id="val-relay" class="text-3xl font-bold text-white">--</p>
+        </div>
+      </div>
+      <div id="status-relay" class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+        Waiting data...
+      </div>
+    </div>
+  </main>
 
-        let alertHistory = [];
-        let sensorHistory = [];
-        let chartInstance = null;
+  <!-- CHART -->
+  <div class="glass-panel p-6 rounded-2xl border border-gray-800 mb-8">
+    <h2 class="text-2xl font-bold mb-4 text-brand-teal flex items-center">
+      <span class="mr-3">📈</span> Live Trends
+    </h2>
+    <div class="h-64 md:h-80 w-full">
+      <canvas id="sensorChart"></canvas>
+    </div>
+  </div>
 
-        // Real-time listener for sensor data
-        const sensorsRef = database.ref('sensors');
-        sensorsRef.on('value', (snapshot) => {
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-                updateSensorDisplays(data);
-                updateSystemStatus();
-                checkAlerts(data);
-            }
-        }, (error) => {
-            console.error('Database error:', error);
-            updateSystemStatus('error');
-        });
+  <!-- CONTROL & LOG -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="glass-panel p-6 rounded-2xl bg-dark-card border border-gray-800">
+      <h2 class="text-2xl font-bold mb-6 text-brand-teal flex items-center">
+        <span class="mr-3">🎮</span> Kontrol Relay
+      </h2>
+      <div class="flex flex-col sm:flex-row gap-4 mb-6">
+        <button onclick="controlRelay('ON')"
+          class="flex-1 py-4 px-6 rounded-xl font-bold text-white bg-brand-green hover:bg-green-600 active:scale-95 transition-all shadow-lg shadow-green-900/20 flex justify-center items-center">
+          <span class="mr-2">⚡</span> NYALAKAN
+        </button>
+        <button onclick="controlRelay('OFF')"
+          class="flex-1 py-4 px-6 rounded-xl font-bold text-white bg-brand-red hover:bg-red-600 active:scale-95 transition-all shadow-lg shadow-red-900/20 flex justify-center items-center">
+          <span class="mr-2">🚫</span> MATIKAN
+        </button>
+      </div>
+      <div class="text-center text-gray-400 bg-black/20 p-4 rounded-xl">
+        Status saat ini: <span id="ctrl-relay-status" class="font-bold text-white">--</span>
+      </div>
+    </div>
 
-        // Update sensor displays
-        function updateSensorDisplays(data) {
-            // Flame Sensor
-            if (data.flame !== undefined) {
-                sensorData.flame = data.flame;
-                const flameVal = document.getElementById('val-flame');
-                const flameStatus = document.getElementById('status-flame');
-                flameVal.textContent = data.flame;
-                flameStatus.textContent = data.flame > 0 ? '🔥 API TERDETEKSI' : '✅ Aman';
-                flameStatus.className = data.flame > 0 ? 'text-sm font-semibold rounded px-2 py-1 inline-block status-danger' : 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
-            }
+    <div class="glass-panel p-6 rounded-2xl bg-dark-card border border-gray-800">
+      <h2 class="text-2xl font-bold mb-6 text-brand-teal flex items-center">
+        <span class="mr-3">📜</span> Log Aktivitas
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="text-xs text-gray-400 uppercase bg-black/20">
+            <tr>
+              <th class="px-3 py-2 rounded-l-lg">Waktu</th>
+              <th class="px-3 py-2">Sensor Update</th>
+              <th class="px-3 py-2 rounded-r-lg">Status</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody" class="divide-y divide-gray-800">
+            <tr>
+              <td colspan="3" class="px-3 py-4 text-center text-gray-500">Menunggu data...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
-            // Humidity
-            if (data.humidity !== undefined) {
-                sensorData.humidity = data.humidity;
-                document.getElementById('val-humidity').textContent = data.humidity.toFixed(1) + ' %';
-                const humidityStatus = document.getElementById('status-humidity');
-                if (data.humidity < 30) {
-                    humidityStatus.textContent = '⚠️ Rendah';
-                    humidityStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-warning';
-                } else if (data.humidity > 70) {
-                    humidityStatus.textContent = '⚠️ Tinggi';
-                    humidityStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-warning';
-                } else {
-                    humidityStatus.textContent = '✅ Normal';
-                    humidityStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
-                }
-            }
+  <!-- FIREBASE + LOGIC -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
 
-            // MQ2 Gas
-            if (data.mq2 !== undefined) {
-                sensorData.mq2 = data.mq2;
-                document.getElementById('val-mq2').textContent = data.mq2.toFixed(1) + ' PPM';
-                const mq2Status = document.getElementById('status-mq2');
-                if (data.mq2 > 1000) {
-                    mq2Status.textContent = '🚨 BAHAYA';
-                    mq2Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-danger';
-                } else if (data.mq2 > 500) {
-                    mq2Status.textContent = '⚠️ Peringatan';
-                    mq2Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-warning';
-                } else {
-                    mq2Status.textContent = '✅ Aman';
-                    mq2Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
-                }
-            }
+    const firebaseConfig = {
+      apiKey: "AIzaSyBpTVXu0R8ziWft_9P0PyFMlCJiozqZ-ZI",
+      authDomain: "iot-sensor-api-dan-gas-1985d.firebaseapp.com",
+      databaseURL: "https://iot-sensor-api-dan-gas-1985d-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "iot-sensor-api-dan-gas-1985d",
+      storageBucket: "iot-sensor-api-dan-gas-1985d.firebasestorage.app",
+      messagingSenderId: "924168889722",
+      appId: "1:924168889722:web:d351d90117f0949ae7e2c3"
+    };
 
-            // MQ7 CO
-            if (data.mq7 !== undefined) {
-                sensorData.mq7 = data.mq7;
-                document.getElementById('val-mq7').textContent = data.mq7.toFixed(1) + ' PPM';
-                const mq7Status = document.getElementById('status-mq7');
-                if (data.mq7 > 100) {
-                    mq7Status.textContent = '🚨 BAHAYA';
-                    mq7Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-danger';
-                } else if (data.mq7 > 50) {
-                    mq7Status.textContent = '⚠️ Peringatan';
-                    mq7Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-warning';
-                } else {
-                    mq7Status.textContent = '✅ Aman';
-                    mq7Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
-                }
-            }
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-            // Temperature
-            if (data.temperature !== undefined) {
-                sensorData.temperature = data.temperature;
-                document.getElementById('val-temperature').textContent = data.temperature.toFixed(1) + ' °C';
-                const tempStatus = document.getElementById('status-temperature');
-                if (data.temperature > 40) {
-                    tempStatus.textContent = '🔥 Tinggi';
-                    tempStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-danger';
-                } else if (data.temperature < 10) {
-                    tempStatus.textContent = '❄️ Rendah';
-                    tempStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-warning';
-                } else {
-                    tempStatus.textContent = '✅ Normal';
-                    tempStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
-                }
-            }
+    let sensorData = { flame: 0, humidity: 0, mq2: 0, mq7: 0, temperature: 0, relay: "OFF" };
+    let chartInstance = null;
 
-            // Relay Status
-            if (data.relay !== undefined) {
-                sensorData.relay = data.relay;
-                const relayVal = document.getElementById('val-relay');
-                const relayStatus = document.getElementById('status-relay');
-                relayVal.textContent = data.relay;
-                if (data.relay === 'ON') {
-                    relayStatus.textContent = '⚡ AKTIF';
-                    relayStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-danger';
-                } else {
-                    relayStatus.textContent = '⏻️ MATI';
-                    relayStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
-                }
-                document.getElementById('ctrl-relay-status').textContent = data.relay;
-            }
+    const sensorsRef = ref(db, "sensors");
+    onValue(sensorsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        updateSensorDisplays(data);
+        updateSystemStatus();
+        checkAlerts(data);
+      } else {
+        updateSystemStatus("error");
+      }
+    }, (error) => {
+      console.error(error);
+      updateSystemStatus("error");
+    });
 
-            updateChart();
-            addToHistory('Sensor Update', 'Sensor data updated');
+    window.controlRelay = function (status) {
+      const relayRef = ref(db, "relay");
+      set(relayRef, status)
+        .then(() => addToHistory("Relay Control", "Relay turned " + status))
+        .catch((err) => console.error(err));
+    };
+
+    window.updateSensorDisplays = function (data) {
+      if (data.flame !== undefined) {
+        sensorData.flame = data.flame;
+        const flameVal = document.getElementById("val-flame");
+        const flameStatus = document.getElementById("status-flame");
+        flameVal.textContent = data.flame;
+        flameStatus.textContent = data.flame > 0 ? "🔥 API TERDETEKSI" : "✅ Aman";
+        flameStatus.className = "text-sm font-semibold rounded px-2 py-1 inline-block " +
+          (data.flame > 0 ? "status-danger" : "status-safe");
+      }
+
+      if (data.humidity !== undefined) {
+        sensorData.humidity = data.humidity;
+        document.getElementById("val-humidity").textContent = data.humidity.toFixed(1) + " %";
+        const humidityStatus = document.getElementById("status-humidity");
+        if (data.humidity < 30) {
+          humidityStatus.textContent = "⚠️ Rendah";
+          humidityStatus.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-warning";
+        } else if (data.humidity > 70) {
+          humidityStatus.textContent = "⚠️ Tinggi";
+          humidityStatus.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-warning";
+        } else {
+          humidityStatus.textContent = "✅ Normal";
+          humidityStatus.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-safe";
         }
+      }
 
-        // Check for alerts
-        function checkAlerts(data) {
-            const alerts = [];
-
-            if (data.flame > 0) alerts.push('🔥 Api terdeteksi!');
-            if (data.mq2 > 1000) alerts.push('⚠️ Gas MQ2 BAHAYA! (' + data.mq2.toFixed(1) + ' PPM)');
-            if (data.mq7 > 100) alerts.push('☠️ CO MQ7 BAHAYA! (' + data.mq7.toFixed(1) + ' PPM)');
-            if (data.temperature > 40) alerts.push('🔥 Suhu TINGGI! (' + data.temperature.toFixed(1) + ' °C)');
-
-            const alertBox = document.getElementById('alertBox');
-            const alertList = document.getElementById('alertList');
-
-            if (alerts.length > 0) {
-                alertBox.classList.remove('hidden');
-                alertList.innerHTML = alerts.map(alert => `<li>• ${alert}</li>`).join('');
-                alertHistory = alerts;
-            } else {
-                alertBox.classList.add('hidden');
-            }
+      if (data.mq2 !== undefined) {
+        sensorData.mq2 = data.mq2;
+        document.getElementById("val-mq2").textContent = data.mq2.toFixed(1) + " PPM";
+        const mq2Status = document.getElementById("status-mq2");
+        if (data.mq2 > 1000) {
+          mq2Status.textContent = "🚨 BAHAYA";
+          mq2Status.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-danger";
+        } else if (data.mq2 > 500) {
+          mq2Status.textContent = "⚠️ Peringatan";
+          mq2Status.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-warning";
+        } else {
+          mq2Status.textContent = "✅ Aman";
+          mq2Status.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-safe";
         }
+      }
 
-        // Update system status
-        function updateSystemStatus(status = 'connected') {
-            const badge = document.getElementById('systemStatusBadge');
-            if (status === 'connected') {
-                badge.textContent = '✅ Terhubung';
-                badge.className = 'px-6 py-2 rounded-full font-bold text-lg transition-all duration-300 bg-green-500/20 text-green-400 border border-green-500/50';
-            } else if (status === 'error') {
-                badge.textContent = '❌ Terputus';
-                badge.className = 'px-6 py-2 rounded-full font-bold text-lg transition-all duration-300 bg-red-500/20 text-red-400 border border-red-500/50';
-            } else {
-                badge.textContent = '🔄 Menghubungkan...';
-                badge.className = 'px-6 py-2 rounded-full font-bold text-lg transition-all duration-300 bg-gray-800 text-gray-400';
-            }
+      if (data.mq7 !== undefined) {
+        sensorData.mq7 = data.mq7;
+        document.getElementById("val-mq7").textContent = data.mq7.toFixed(1) + " PPM";
+        const mq7Status = document.getElementById("status-mq7");
+        if (data.mq7 > 100) {
+          mq7Status.textContent = "🚨 BAHAYA";
+          mq7Status.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-danger";
+        } else if (data.mq7 > 50) {
+          mq7Status.textContent = "⚠️ Peringatan";
+          mq7Status.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-warning";
+        } else {
+          mq7Status.textContent = "✅ Aman";
+          mq7Status.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-safe";
         }
+      }
 
-        // Chart functionality
-        function initChart() {
-            const ctx = document.getElementById('sensorChart').getContext('2d');
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: 'Suhu (°C)',
-                            data: [],
-                            borderColor: '#FFA500',
-                            backgroundColor: 'rgba(255, 165, 0, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        },
-                        {
-                            label: 'Kelembaban (%)',
-                            data: [],
-                            borderColor: '#00BCD4',
-                            backgroundColor: 'rgba(0, 188, 212, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        },
-                        {
-                            label: 'Gas MQ2 (PPM)',
-                            data: [],
-                            borderColor: '#FF6B6B',
-                            backgroundColor: 'rgba(255, 107, 107, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#999', font: { size: 12 } }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            ticks: { color: '#999' },
-                            grid: { color: 'rgba(255,255,255,0.1)' }
-                        },
-                        x: {
-                            ticks: { color: '#999' },
-                            grid: { color: 'rgba(255,255,255,0.1)' }
-                        }
-                    }
-                }
-            });
+      if (data.temperature !== undefined) {
+        sensorData.temperature = data.temperature;
+        document.getElementById("val-temperature").textContent = data.temperature.toFixed(1) + " °C";
+        const tempStatus = document.getElementById("status-temperature");
+        if (data.temperature > 40) {
+          tempStatus.textContent = "🔥 Tinggi";
+          tempStatus.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-danger";
+        } else if (data.temperature < 10) {
+          tempStatus.textContent = "❄️ Rendah";
+          tempStatus.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-warning";
+        } else {
+          tempStatus.textContent = "✅ Normal";
+          tempStatus.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-safe";
         }
+      }
 
-        // Update chart with new data
-        function updateChart() {
-            if (!chartInstance) initChart();
-
-            const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
-            // Keep only last 10 data points
-            if (chartInstance.data.labels.length > 10) {
-                chartInstance.data.labels.shift();
-                chartInstance.data.datasets.forEach(dataset => dataset.data.shift());
-            }
-
-            chartInstance.data.labels.push(now);
-            chartInstance.data.datasets[0].data.push(sensorData.temperature);
-            chartInstance.data.datasets[1].data.push(sensorData.humidity);
-            chartInstance.data.datasets[2].data.push(sensorData.mq2);
-
-            chartInstance.update('none');
+      if (data.relay !== undefined) {
+        sensorData.relay = data.relay;
+        const relayVal = document.getElementById("val-relay");
+        const relayStatus = document.getElementById("status-relay");
+        relayVal.textContent = data.relay;
+        if (data.relay === "ON") {
+          relayStatus.textContent = "⚡ AKTIF";
+          relayStatus.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-danger";
+        } else {
+          relayStatus.textContent = "⏻️ MATI";
+          relayStatus.className = "text-sm font-semibold rounded px-2 py-1 inline-block status-safe";
         }
+        document.getElementById("ctrl-relay-status").textContent = data.relay;
+      }
 
-        // Control relay
-        function controlRelay(status) {
-            database.ref('relay').set(status)
-                .then(() => {
-                    addToHistory('Relay Control', 'Relay turned ' + status);
-                })
-                .catch(error => console.error('Error:', error));
-        }
+      updateChart();
+      addToHistory("Sensor Update", "Sensor data updated");
+    };
 
-        // Add to history log
-        function addToHistory(sensor, status) {
-            const now = new Date().toLocaleTimeString('id-ID');
-            const tbody = document.getElementById('historyTableBody');
+    window.checkAlerts = function (data) {
+      const alerts = [];
+      if (data.flame > 0) alerts.push("🔥 Api terdeteksi!");
+      if (data.mq2 > 1000) alerts.push("⚠️ Gas MQ2 BAHAYA! (" + data.mq2.toFixed(1) + " PPM)");
+      if (data.mq7 > 100) alerts.push("☠️ CO MQ7 BAHAYA! (" + data.mq7.toFixed(1) + " PPM)");
+      if (data.temperature > 40) alerts.push("🔥 Suhu TINGGI! (" + data.temperature.toFixed(1) + " °C)");
 
-            // Clear "Menunggu data" message
-            if (tbody.children.length === 1 && tbody.children[0].children.length === 3) {
-                tbody.innerHTML = '';
-            }
+      const alertBox = document.getElementById("alertBox");
+      const alertList = document.getElementById("alertList");
 
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="px-3 py-2 text-gray-400">${now}</td>
-                <td class="px-3 py-2">${sensor}</td>
-                <td class="px-3 py-2 text-brand-teal">${status}</td>
-            `;
+      if (alerts.length > 0) {
+        alertBox.classList.remove("hidden");
+        alertList.innerHTML = alerts.map(a => `<li>• ${a}</li>`).join("");
+      } else {
+        alertBox.classList.add("hidden");
+      }
+    };
 
-            tbody.insertBefore(row, tbody.firstChild);
+    window.updateSystemStatus = function (status = "connected") {
+      const badge = document.getElementById("systemStatusBadge");
+      if (status === "connected") {
+        badge.textContent = "✅ Terhubung";
+        badge.className = "px-6 py-2 rounded-full font-bold text-lg bg-green-500/20 text-green-400 border border-green-500/50";
+      } else if (status === "error") {
+        badge.textContent = "❌ Terputus";
+        badge.className = "px-6 py-2 rounded-full font-bold text-lg bg-red-500/20 text-red-400 border border-red-500/50";
+      } else {
+        badge.textContent = "🔄 Menghubungkan...";
+        badge.className = "px-6 py-2 rounded-full font-bold text-lg bg-gray-800 text-gray-400";
+      }
+    };
 
-            // Keep only last 10 entries
-            while (tbody.children.length > 10) {
-                tbody.removeChild(tbody.lastChild);
-            }
-        }
+    function initChart() {
+      const ctx = document.getElementById("sensorChart").getContext("2d");
+      chartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            { label: "Suhu (°C)", data: [], borderColor: "#FFA500", backgroundColor: "rgba(255,165,0,0.1)", tension: 0.4, fill: true },
+            { label: "Kelembaban (%)", data: [], borderColor: "#00BCD4", backgroundColor: "rgba(0,188,212,0.1)", tension: 0.4, fill: true },
+            { label: "Gas MQ2 (PPM)", data: [], borderColor: "#FF6B6B", backgroundColor: "rgba(255,107,107,0.1)", tension: 0.4, fill: true },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: "#999", font: { size: 12 } } } },
+          scales: {
+            y: { ticks: { color: "#999" }, grid: { color: "rgba(255,255,255,0.1)" } },
+            x: { ticks: { color: "#999" }, grid: { color: "rgba(255,255,255,0.1)" } },
+          },
+        },
+      });
+    }
 
-        // Initialize on page load
-        window.addEventListener('load', () => {
-            initChart();
-            updateSystemStatus('connected');
-        });
-    </script>
+    window.updateChart = function () {
+      if (!chartInstance) return;
+      const now = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      if (chartInstance.data.labels.length > 10) {
+        chartInstance.data.labels.shift();
+        chartInstance.data.datasets.forEach(d => d.data.shift());
+      }
+      chartInstance.data.labels.push(now);
+      chartInstance.data.datasets[0].data.push(sensorData.temperature);
+      chartInstance.data.datasets[1].data.push(sensorData.humidity);
+      chartInstance.data.datasets[2].data.push(sensorData.mq2);
+      chartInstance.update("none");
+    };
 
+    window.addToHistory = function (sensor, status) {
+      const now = new Date().toLocaleTimeString("id-ID");
+      const tbody = document.getElementById("historyTableBody");
+      if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
+        tbody.innerHTML = "";
+      }
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td class="px-3 py-2 text-gray-400">${now}</td>
+        <td class="px-3 py-2">${sensor}</td>
+        <td class="px-3 py-2 text-brand-teal">${status}</td>
+      `;
+      tbody.insertBefore(row, tbody.firstChild);
+      while (tbody.children.length > 10) tbody.removeChild(tbody.lastChild);
+    };
+
+    window.addEventListener("load", () => {
+      initChart();
+      updateSystemStatus("connecting");
+    });
+  </script>
 </body>
-
 </html>
