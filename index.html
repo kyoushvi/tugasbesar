@@ -193,6 +193,17 @@
             }
         }
 
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .sensor-data {
             margin: 1rem 0;
         }
@@ -376,8 +387,18 @@
         <!-- Alert Messages -->
         <div id="alertBox" class="alert alert-success"></div>
 
-        <!-- Control Panel -->
-        <div class="controls">
+        <!-- Mode Selector -->
+        <div class="control-group" style="grid-column: 1/-1; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+            <label style="color: white; font-weight: 700;">📡 Mode Dashboard</label>
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button class="btn-primary" id="modeProduction" onclick="switchMode('production')" style="flex: 1;">🚀 Production (Real IoT)</button>
+                <button class="btn-success" id="modeTesting" onclick="switchMode('testing')" style="flex: 1;">🧪 Testing (Manual Input)</button>
+            </div>
+            <p style="color: rgba(255,255,255,0.8); font-size: 0.85rem; margin-top: 1rem; text-align: center;">Mode Aktif: <span id="currentMode" style="font-weight: 700;">🚀 Production</span></p>
+        </div>
+
+        <!-- Control Panel - Only shown in Testing Mode -->
+        <div id="testingPanel" class="controls" style="display: none;">
             <div class="control-group">
                 <label>🌡️ Temperature (Suhu)</label>
                 <input type="number" id="temperature" placeholder="Nilai suhu (°C)" step="0.1">
@@ -425,11 +446,24 @@
             </div>
         </div>
 
-        <!-- Action Buttons -->
-        <div class="button-group">
-            <button class="btn-primary" onclick="sendAllSensorData()">📤 Kirim Semua Data</button>
-            <button class="btn-success" onclick="loadSensorData()">🔄 Muat Data</button>
+        <!-- Action Buttons - Testing Mode -->
+        <div class="button-group" id="testingButtons" style="display: none;">
+            <button class="btn-primary" onclick="sendAllSensorData()">📤 Kirim Data Test</button>
             <button class="btn-danger" onclick="clearData()">🗑️ Hapus Semua</button>
+        </div>
+
+        <!-- Connection Status - Production Mode -->
+        <div class="control-group" id="productionInfo" style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%); border: 1px solid #4CAF50;">
+            <div style="text-align: center;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔌 Status Koneksi</div>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <div class="sensor-status"></div>
+                    <span style="color: #4CAF50; font-weight: 600;">Menunggu data dari IoT Device...</span>
+                </div>
+                <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-top: 1rem;">
+                    Dashboard akan otomatis update ketika IoT device mengirim data ke Firebase 📡
+                </p>
+            </div>
         </div>
 
         <!-- Statistics -->
@@ -482,13 +516,83 @@
         // Data Storage
         let sensorData = JSON.parse(localStorage.getItem('sensorData')) || [];
         const MAX_LOGS = 50;
+        let currentMode = localStorage.getItem('dashboardMode') || 'production';
+        let firebaseUnsubscribe = null;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             updateDashboard();
             addLog('✓ Dashboard initialized with Firebase', 'success');
-            loadDataFromFirebase();
+            
+            // Set initial mode
+            switchMode(currentMode);
+            
+            // Setup real-time Firebase listener (always active)
+            setupFirebaseListener();
         });
+
+        // Switch Mode: Production vs Testing
+        function switchMode(mode) {
+            currentMode = mode;
+            localStorage.setItem('dashboardMode', mode);
+            
+            const testingPanel = document.getElementById('testingPanel');
+            const testingButtons = document.getElementById('testingButtons');
+            const productionInfo = document.getElementById('productionInfo');
+            const modeProduction = document.getElementById('modeProduction');
+            const modeTesting = document.getElementById('modeTesting');
+            const currentModeSpan = document.getElementById('currentMode');
+
+            if (mode === 'production') {
+                // Production Mode: Hide input fields, show connection status
+                testingPanel.style.display = 'none';
+                testingButtons.style.display = 'none';
+                productionInfo.style.display = 'block';
+                
+                modeProduction.style.background = '#4CAF50';
+                modeTesting.style.background = var(--color-success);
+                modeTesting.style.opacity = '0.6';
+                currentModeSpan.textContent = '🚀 Production (Data otomatis dari IoT)';
+                
+                addLog('🚀 Switched to Production Mode - Waiting for IoT device data...', 'success');
+            } else {
+                // Testing Mode: Show input fields
+                testingPanel.style.display = 'grid';
+                testingButtons.style.display = 'grid';
+                productionInfo.style.display = 'none';
+                
+                modeTesting.style.background = '#FF9800';
+                modeProduction.style.background = var(--color-primary);
+                modeProduction.style.opacity = '0.6';
+                currentModeSpan.textContent = '🧪 Testing (Manual input)';
+                
+                addLog('🧪 Switched to Testing Mode - Input sensor values manually', 'success');
+            }
+        }
+
+        // Setup Real-time Firebase Listener
+        function setupFirebaseListener() {
+            try {
+                // Remove old listener if exists
+                if (firebaseUnsubscribe) {
+                    firebaseUnsubscribe();
+                }
+
+                // Listen for real-time changes
+                firebaseUnsubscribe = database.ref('sensors').on('value', (snapshot) => {
+                    const firebaseData = snapshot.val();
+                    
+                    if (firebaseData) {
+                        addLog('✓ Real-time data received from Firebase', 'success');
+                        renderFirebaseCards(firebaseData);
+                    }
+                }, (error) => {
+                    addLog(`✗ Firebase error: ${error.message}`, 'error');
+                });
+            } catch (error) {
+                addLog(`✗ Error setup listener: ${error.message}`, 'error');
+            }
+        }
 
         // Send All Sensor Data
         async function sendAllSensorData() {
@@ -561,14 +665,14 @@
             updateDashboard();
         }
 
-        // Load Data from Firebase
+        // Load Data from Firebase (Initial load only)
         async function loadDataFromFirebase() {
             try {
                 const snapshot = await database.ref('sensors').once('value');
                 const firebaseData = snapshot.val();
                 
                 if (firebaseData) {
-                    addLog('✓ Data loaded from Firebase', 'success');
+                    addLog('✓ Initial data loaded from Firebase', 'success');
                     renderFirebaseCards(firebaseData);
                 } else {
                     addLog('ℹ️ Tidak ada data di Firebase', 'info');
