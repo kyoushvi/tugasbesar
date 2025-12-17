@@ -1,436 +1,273 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IoT Sensor Monitor - API & Gas</title>
+    <title>IoT Sensor Monitor</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: {
+                            bg: '#0F0F0F',
+                            card: '#1A1A1A',
+                        },
+                        brand: {
+                            teal: '#00BCD4',
+                            red: '#FF6B6B',
+                            orange: '#FFA500',
+                            green: '#4CAF50',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        :root {
-            --color-primary: #2196F3;
-            --color-success: #4CAF50;
-            --color-warning: #FF9800;
-            --color-danger: #f44336;
-            --color-bg: #0f0f0f;
-            --color-surface: #1a1a1a;
-            --color-text: #ffffff;
-            --color-text-secondary: #b0b0b0;
+        /* Glass morphism effect */
+        .glass-panel {
+            background: rgba(26, 26, 26, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* Smooth animations */
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--color-bg);
-            color: var(--color-text);
-            line-height: 1.6;
+        .animate-pulse-slow {
+            animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 2rem;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        }
-
-        header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        header p {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1rem;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .control-group {
-            background: var(--color-surface);
-            padding: 1.5rem;
-            border-radius: 8px;
-            border: 1px solid #333;
-        }
-
-        .control-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--color-text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .control-group input,
-        .control-group select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #444;
-            border-radius: 4px;
-            background: #0f0f0f;
-            color: var(--color-text);
-            font-size: 1rem;
-        }
-
-        .control-group input:focus,
-        .control-group select:focus {
-            outline: none;
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
-        }
-
-        .button-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-
-        button {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary {
-            background: var(--color-primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #1976D2;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
-        }
-
-        .btn-success {
-            background: var(--color-success);
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #45a049;
-        }
-
-        .btn-danger {
-            background: var(--color-danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #da190b;
-        }
-
-        .sensors-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
+        /* Sensor card hover effects */
         .sensor-card {
-            background: var(--color-surface);
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
+            transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .sensor-card:hover {
-            border-color: var(--color-primary);
-            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
             transform: translateY(-4px);
         }
 
-        .sensor-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid #333;
-            padding-bottom: 0.5rem;
-        }
-
-        .sensor-name {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--color-primary);
-        }
-
-        .sensor-status {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--color-success);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.6;
-            }
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .sensor-data {
-            margin: 1rem 0;
-        }
-
-        .data-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid #2a2a2a;
-        }
-
-        .data-row:last-child {
-            border-bottom: none;
-        }
-
-        .data-label {
-            color: var(--color-text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .data-value {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--color-primary);
-        }
-
-        .data-unit {
-            color: var(--color-text-secondary);
-            font-size: 0.85rem;
-            margin-left: 0.25rem;
-        }
-
-        .timestamp {
-            font-size: 0.75rem;
-            color: var(--color-text-secondary);
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            border-top: 1px solid #2a2a2a;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--color-surface);
-            padding: 1.5rem;
-            border-radius: 8px;
-            border: 1px solid #333;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--color-primary);
-            margin: 0.5rem 0;
-        }
-
-        .stat-label {
-            color: var(--color-text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .logs-section {
-            background: var(--color-surface);
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 1.5rem;
-        }
-
-        .logs-header {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            color: var(--color-primary);
-        }
-
-        .logs-container {
-            max-height: 300px;
-            overflow-y: auto;
-            background: #0a0a0a;
-            padding: 1rem;
-            border-radius: 4px;
-            border: 1px solid #2a2a2a;
-        }
-
-        .log-entry {
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #2a2a2a;
-            font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
-            color: var(--color-text-secondary);
-        }
-
-        .log-entry:last-child {
-            border-bottom: none;
-        }
-
-        .log-time {
-            color: var(--color-warning);
-            font-weight: 600;
-        }
-
-        .log-success {
-            color: var(--color-success);
-        }
-
-        .log-error {
-            color: var(--color-danger);
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top: 2px solid var(--color-primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: 4px;
-            margin-bottom: 1rem;
-            display: none;
-        }
-
-        .alert-success {
-            background: rgba(76, 175, 80, 0.1);
-            border: 1px solid var(--color-success);
-            color: var(--color-success);
-        }
-
-        .alert-error {
-            background: rgba(244, 67, 54, 0.1);
-            border: 1px solid var(--color-danger);
-            color: var(--color-danger);
-        }
-
-        .alert.show {
-            display: block;
-        }
-
-        @media (max-width: 768px) {
-            header h1 {
-                font-size: 1.8rem;
-            }
-
-            .container {
-                padding: 1rem;
-            }
-
-            .controls {
-                grid-template-columns: 1fr;
-            }
-
-            .sensors-grid {
-                grid-template-columns: 1fr;
-            }
-        }
+        /* Status colors */
+        .status-safe { background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1px solid #4CAF50; }
+        .status-warning { background: rgba(255, 165, 0, 0.2); color: #FFA500; border: 1px solid #FFA500; }
+        .status-danger { background: rgba(255, 107, 107, 0.2); color: #FF6B6B; border: 1px solid #FF6B6B; }
     </style>
 </head>
-<body>
-    <header>
-        <h1> IoT Sensor Monitor</h1>
-        <p>Real-time API & Gas Sensor Data Dashboard</p>
+
+<body class="bg-dark-bg text-gray-200 font-sans min-h-screen p-4 md:p-8">
+
+    <!-- Header -->
+    <header
+        class="glass-panel mb-8 p-6 flex flex-col md:flex-row justify-between items-center bg-dark-card rounded-2xl border border-gray-800">
+        <div class="mb-4 md:mb-0">
+            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-teal to-blue-500">
+                IoT Sensor API & Gas Monitor
+            </h1>
+            <p class="text-gray-400 mt-1">Real-time monitoring berbasis Firebase</p>
+        </div>
+
+        <div id="systemStatusBadge"
+            class="px-6 py-2 rounded-full font-bold text-lg transition-all duration-300 bg-gray-800 text-gray-400">
+            <!-- Injected via JS -->
+            🔄 Menghubungkan...
+        </div>
     </header>
 
-    <div class="container">
-        <!-- Alert Messages -->
-        <div id="alertBox" class="alert alert-success"></div>
-
-        <!-- Connection Status - Production Mode -->
-        <div class="control-group" style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%); border: 1px solid #4CAF50;">
-            <div style="text-align: center;">
-                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔌 Status Koneksi</div>
-                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <div class="sensor-status"></div>
-                    <span style="color: #4CAF50; font-weight: 600;">Menunggu data dari IoT Device...</span>
-                </div>
-                <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-top: 1rem;">
-                </p>
-            </div>
-        </div>
-
-        <!-- Statistics -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Total Data Terkirim</div>
-                <div class="stat-value" id="totalCount">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Sensor Aktif</div>
-                <div class="stat-value" id="activeSensors">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Nilai Rata-rata</div>
-                <div class="stat-value" id="averageValue">0</div>
-            </div>
-        </div>
-
-        <!-- Sensor Cards -->
-        <h2 style="margin-top: 2rem; margin-bottom: 1rem;">Data Sensor Terkini</h2>
-        <div id="sensorsGrid" class="sensors-grid"></div>
-
-        <!-- Logs Section -->
-        <div class="logs-section" style="margin-top: 2rem;">
-            <div class="logs-header">📋 Activity Log</div>
-            <div class="logs-container" id="logsContainer">
-                <div class="log-entry"><span class="log-time">[00:00:00]</span> System initialized...</div>
+    <!-- Alert Box -->
+    <div id="alertBox" class="hidden mb-8 p-6 rounded-2xl bg-brand-red/20 border-2 border-brand-red animate-pulse-slow">
+        <div class="flex items-start">
+            <div class="text-4xl mr-4">🚨</div>
+            <div>
+                <h2 class="text-xl font-bold text-brand-red mb-2">PERINGATAN BAHAYA TERDETEKSI!</h2>
+                <ul id="alertList" class="space-y-1 text-white/90">
+                    <!-- Dynamic Alert Items -->
+                </ul>
             </div>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"></script>
+    <!-- Sensor Grid -->
+    <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+
+        <!-- Flame Sensor -->
+        <div id="card-flame"
+            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
+            <div class="flex justify-between items-start mb-4">
+                <div class="text-4xl">🔥</div>
+                <div class="text-right">
+                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">Api / Flame</h3>
+                    <p id="val-flame" class="text-3xl font-bold text-white">--</p>
+                </div>
+            </div>
+            <div id="status-flame"
+                class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+                Waiting data...
+            </div>
+        </div>
+
+        <!-- Humidity Sensor -->
+        <div id="card-humidity"
+            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
+            <div class="flex justify-between items-start mb-4">
+                <div class="text-4xl">💧</div>
+                <div class="text-right">
+                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">Kelembaban</h3>
+                    <p id="val-humidity" class="text-3xl font-bold text-white">-- %</p>
+                </div>
+            </div>
+            <div id="status-humidity"
+                class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+                Waiting data...
+            </div>
+        </div>
+
+        <!-- MQ2 Gas Sensor -->
+        <div id="card-mq2"
+            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
+            <div class="flex justify-between items-start mb-4">
+                <div class="text-4xl">⚠️</div>
+                <div class="text-right">
+                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">Gas MQ2</h3>
+                    <p id="val-mq2" class="text-3xl font-bold text-white">-- PPM</p>
+                </div>
+            </div>
+            <div id="status-mq2" class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+                Waiting data...
+            </div>
+        </div>
+
+        <!-- MQ7 CO Sensor -->
+        <div id="card-mq7"
+            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
+            <div class="flex justify-between items-start mb-4">
+                <div class="text-4xl">☠️</div>
+                <div class="text-right">
+                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">CO MQ7</h3>
+                    <p id="val-mq7" class="text-3xl font-bold text-white">-- PPM</p>
+                </div>
+            </div>
+            <div id="status-mq7" class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+                Waiting data...
+            </div>
+        </div>
+
+        <!-- Temperature Sensor -->
+        <div id="card-temperature"
+            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
+            <div class="flex justify-between items-start mb-4">
+                <div class="text-4xl">🌡️</div>
+                <div class="text-right">
+                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">Suhu</h3>
+                    <p id="val-temperature" class="text-3xl font-bold text-white">-- °C</p>
+                </div>
+            </div>
+            <div id="status-temperature"
+                class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+                Waiting data...
+            </div>
+        </div>
+
+        <!-- Relay Status -->
+        <div id="card-relay"
+            class="sensor-card glass-panel p-6 rounded-2xl border border-gray-800 transition-all duration-300 hover:shadow-lg hover:border-brand-teal/50">
+            <div class="flex justify-between items-start mb-4">
+                <div class="text-4xl">⚡</div>
+                <div class="text-right">
+                    <h3 class="text-gray-400 text-sm uppercase tracking-wider">Status Relay</h3>
+                    <p id="val-relay" class="text-3xl font-bold text-white">--</p>
+                </div>
+            </div>
+            <div id="status-relay"
+                class="text-sm font-semibold rounded px-2 py-1 inline-block bg-gray-800 text-gray-400">
+                Waiting data...
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Charts Section -->
+    <div class="glass-panel p-6 rounded-2xl border border-gray-800 mb-8">
+        <h2 class="text-2xl font-bold mb-4 text-brand-teal flex items-center">
+            <span class="mr-3">📈</span> Live Trends
+        </h2>
+        <div class="h-64 md:h-80 w-full">
+            <canvas id="sensorChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Control & History Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Relay Control -->
+        <div class="glass-panel p-6 rounded-2xl bg-dark-card border border-gray-800">
+            <h2 class="text-2xl font-bold mb-6 text-brand-teal flex items-center">
+                <span class="mr-3">🎮</span> Kontrol Relay
+            </h2>
+
+            <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                <button onclick="controlRelay('ON')"
+                    class="flex-1 py-4 px-6 rounded-xl font-bold text-white bg-brand-green hover:bg-green-600 active:scale-95 transition-all shadow-lg shadow-green-900/20 flex justify-center items-center group">
+                    <span class="mr-2">⚡</span> NYALAKAN
+                </button>
+                <button onclick="controlRelay('OFF')"
+                    class="flex-1 py-4 px-6 rounded-xl font-bold text-white bg-brand-red hover:bg-red-600 active:scale-95 transition-all shadow-lg shadow-red-900/20 flex justify-center items-center group">
+                    <span class="mr-2">🚫</span> MATIKAN
+                </button>
+            </div>
+            <div class="text-center text-gray-400 bg-black/20 p-4 rounded-xl">
+                Status saat ini: <span id="ctrl-relay-status" class="font-bold text-white">--</span>
+            </div>
+        </div>
+
+        <!-- History/Log -->
+        <div class="glass-panel p-6 rounded-2xl bg-dark-card border border-gray-800">
+            <h2 class="text-2xl font-bold mb-6 text-brand-teal flex items-center">
+                <span class="mr-3">📜</span> Log Aktivitas
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-gray-400 uppercase bg-black/20">
+                        <tr>
+                            <th class="px-3 py-2 rounded-l-lg">Waktu</th>
+                            <th class="px-3 py-2">Sensor Update</th>
+                            <th class="px-3 py-2 rounded-r-lg">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-gray-800">
+                        <!-- Filled by JS -->
+                        <tr>
+                            <td colspan="3" class="px-3 py-4 text-center text-gray-500">Menunggu data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Initialization Script -->
     <script>
         // Firebase Configuration
         const firebaseConfig = {
@@ -447,314 +284,287 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // Data Storage
-        let sensorData = JSON.parse(localStorage.getItem('sensorData')) || [];
-        const MAX_LOGS = 50;
-        let firebaseUnsubscribe = null;
+        // Global variables for sensor data
+        let sensorData = {
+            flame: 0,
+            humidity: 0,
+            mq2: 0,
+            mq7: 0,
+            temperature: 0,
+            relay: 'OFF'
+        };
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            updateDashboard();
-            addLog('✓ Dashboard initialized with Firebase', 'success');
-            
-            // Setup real-time Firebase listener (always active)
-            setupFirebaseListener();
+        let alertHistory = [];
+        let sensorHistory = [];
+        let chartInstance = null;
+
+        // Real-time listener for sensor data
+        const sensorsRef = database.ref('sensors');
+        sensorsRef.on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                updateSensorDisplays(data);
+                updateSystemStatus();
+                checkAlerts(data);
+            }
+        }, (error) => {
+            console.error('Database error:', error);
+            updateSystemStatus('error');
         });
 
-        // Setup Real-time Firebase Listener
-        function setupFirebaseListener() {
-            try {
-                // Remove old listener if exists
-                if (firebaseUnsubscribe) {
-                    firebaseUnsubscribe();
-                }
-
-                // Listen for real-time changes
-                firebaseUnsubscribe = database.ref('sensors').on('value', (snapshot) => {
-                    const firebaseData = snapshot.val();
-                    
-                    if (firebaseData) {
-                        addLog('✓ Real-time data received from Firebase', 'success');
-                        renderFirebaseCards(firebaseData);
-                    }
-                }, (error) => {
-                    addLog(`✗ Firebase error: ${error.message}`, 'error');
-                });
-            } catch (error) {
-                addLog(`✗ Error setup listener: ${error.message}`, 'error');
+        // Update sensor displays
+        function updateSensorDisplays(data) {
+            // Flame Sensor
+            if (data.flame !== undefined) {
+                sensorData.flame = data.flame;
+                const flameVal = document.getElementById('val-flame');
+                const flameStatus = document.getElementById('status-flame');
+                flameVal.textContent = data.flame;
+                flameStatus.textContent = data.flame > 0 ? '🔥 API TERDETEKSI' : '✅ Aman';
+                flameStatus.className = data.flame > 0 ? 'text-sm font-semibold rounded px-2 py-1 inline-block status-danger' : 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
             }
-        }
 
-        // Load Data from Firebase (Initial load only)
-        async function loadDataFromFirebase() {
-            try {
-                const snapshot = await database.ref('sensors').once('value');
-                const firebaseData = snapshot.val();
-                
-                if (firebaseData) {
-                    addLog('✓ Initial data loaded from Firebase', 'success');
-                    renderFirebaseCards(firebaseData);
+            // Humidity
+            if (data.humidity !== undefined) {
+                sensorData.humidity = data.humidity;
+                document.getElementById('val-humidity').textContent = data.humidity.toFixed(1) + ' %';
+                const humidityStatus = document.getElementById('status-humidity');
+                if (data.humidity < 30) {
+                    humidityStatus.textContent = '⚠️ Rendah';
+                    humidityStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-warning';
+                } else if (data.humidity > 70) {
+                    humidityStatus.textContent = '⚠️ Tinggi';
+                    humidityStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-warning';
                 } else {
-                    addLog('ℹ️ Tidak ada data di Firebase', 'info');
+                    humidityStatus.textContent = '✅ Normal';
+                    humidityStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
                 }
-            } catch (error) {
-                addLog(`✗ Error loading Firebase: ${error.message}`, 'error');
-            }
-        }
-
-        // Render Firebase Cards
-        function renderFirebaseCards(firebaseData) {
-            const grid = document.getElementById('sensorsGrid');
-            grid.innerHTML = '';
-
-            if (!firebaseData || Object.keys(firebaseData).length === 0) {
-                grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--color-text-secondary);">Tidak ada data sensor</p>';
-                return;
             }
 
-            Object.entries(firebaseData).forEach(([deviceId, data]) => {
-                const html = `
-                    <div class="sensor-card">
-                        <div class="sensor-header">
-                            <span class="sensor-name">📊 ${deviceId}</span>
-                            <div class="sensor-status"></div>
-                        </div>
-                        <div class="sensor-data">
-                            ${data.temperature ? `
-                            <div class="data-row">
-                                <span class="data-label">🌡️ Temperature</span>
-                                <span class="data-value">${parseFloat(data.temperature).toFixed(2)}<span class="data-unit">°C</span></span>
-                            </div>
-                            ` : ''}
-                            ${data.humidity ? `
-                            <div class="data-row">
-                                <span class="data-label">💧 Humidity</span>
-                                <span class="data-value">${parseFloat(data.humidity).toFixed(2)}<span class="data-unit">%</span></span>
-                            </div>
-                            ` : ''}
-                            ${data.mq2 ? `
-                            <div class="data-row">
-                                <span class="data-label">💨 MQ2 (Gas)</span>
-                                <span class="data-value">${parseFloat(data.mq2).toFixed(2)}<span class="data-unit">ppm</span></span>
-                            </div>
-                            ` : ''}
-                            ${data.mq7 ? `
-                            <div class="data-row">
-                                <span class="data-label">💨 MQ7 (CO)</span>
-                                <span class="data-value">${parseFloat(data.mq7).toFixed(2)}<span class="data-unit">ppm</span></span>
-                            </div>
-                            ` : ''}
-                            ${data.flame !== undefined ? `
-                            <div class="data-row">
-                                <span class="data-label">🔥 Flame</span>
-                                <span class="data-value">${data.flame == 1 ? '🔥 Terdeteksi' : '✓ Aman'}</span>
-                            </div>
-                            ` : ''}
-                            ${data.status ? `
-                            <div class="data-row">
-                                <span class="data-label">⚙️ Status</span>
-                                <span class="data-value">${data.status}</span>
-                            </div>
-                            ` : ''}
-                            ${data.relayStatus ? `
-                            <div class="data-row">
-                                <span class="data-label">🔌 Relay</span>
-                                <span class="data-value">${data.relayStatus}</span>
-                            </div>
-                            ` : ''}
-                            <div class="data-row">
-                                <span class="data-label">📍 Lokasi</span>
-                                <span class="data-value" style="font-size: 0.9rem;">${data.location || '-'}</span>
-                            </div>
-                        </div>
-                        <div class="timestamp">
-                            🕐 ${formatTime(data.timestamp)}
-                        </div>
-                    </div>
-                `;
-                grid.innerHTML += html;
-            });
-        }
-
-        // Update Dashboard
-        function updateDashboard() {
-            updateStats();
-            renderSensorCards();
-            // Also load from Firebase
-            loadDataFromFirebase();
-        }
-
-        // Update Statistics
-        function updateStats() {
-            document.getElementById('totalCount').textContent = sensorData.length;
-            
-            const uniqueSensors = new Set(sensorData.map(d => d.deviceId)).size;
-            document.getElementById('activeSensors').textContent = uniqueSensors;
-            
-            if (sensorData.length > 0) {
-                const avg = (sensorData.reduce((sum, d) => sum + d.value, 0) / sensorData.length).toFixed(2);
-                document.getElementById('averageValue').textContent = avg;
-            } else {
-                document.getElementById('averageValue').textContent = '0';
-            }
-        }
-
-        // Render Sensor Cards
-        function renderSensorCards() {
-            const grid = document.getElementById('sensorsGrid');
-            grid.innerHTML = '';
-
-            if (sensorData.length === 0) {
-                grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--color-text-secondary);">Tidak ada data sensor</p>';
-                return;
+            // MQ2 Gas
+            if (data.mq2 !== undefined) {
+                sensorData.mq2 = data.mq2;
+                document.getElementById('val-mq2').textContent = data.mq2.toFixed(1) + ' PPM';
+                const mq2Status = document.getElementById('status-mq2');
+                if (data.mq2 > 1000) {
+                    mq2Status.textContent = '🚨 BAHAYA';
+                    mq2Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-danger';
+                } else if (data.mq2 > 500) {
+                    mq2Status.textContent = '⚠️ Peringatan';
+                    mq2Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-warning';
+                } else {
+                    mq2Status.textContent = '✅ Aman';
+                    mq2Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
+                }
             }
 
-            const grouped = groupBySensor();
-            
-            Object.entries(grouped).forEach(([key, values]) => {
-                const latest = values[values.length - 1];
-                const html = `
-                    <div class="sensor-card">
-                        <div class="sensor-header">
-                            <span class="sensor-name">${getSensorIcon(latest.type)} ${getSensorLabel(latest.type)}</span>
-                            <div class="sensor-status"></div>
-                        </div>
-                        <div class="sensor-data">
-                            <div class="data-row">
-                                <span class="data-label">Nilai Terkini</span>
-                                <span class="data-value">${formatValue(latest.value, latest.type)}<span class="data-unit">${getUnit(latest.type)}</span></span>
-                            </div>
-                            <div class="data-row">
-                                <span class="data-label">Device ID</span>
-                                <span class="data-value" style="font-size: 0.9rem;">${latest.deviceId}</span>
-                            </div>
-                            <div class="data-row">
-                                <span class="data-label">Lokasi</span>
-                                <span class="data-value" style="font-size: 0.9rem;">${latest.location}</span>
-                            </div>
-                            <div class="data-row">
-                                <span class="data-label">Rata-rata</span>
-                                <span class="data-value">${(values.reduce((sum, d) => sum + d.value, 0) / values.length).toFixed(2)}</span>
-                            </div>
-                            <div class="data-row">
-                                <span class="data-label">Min/Max</span>
-                                <span class="data-value" style="font-size: 0.9rem;">${Math.min(...values.map(d => d.value)).toFixed(2)} / ${Math.max(...values.map(d => d.value)).toFixed(2)}</span>
-                            </div>
-                        </div>
-                        <div class="timestamp">
-                            🕐 ${formatTime(latest.timestamp)}
-                        </div>
-                    </div>
-                `;
-                grid.innerHTML += html;
-            });
-        }
-
-        // Group Data by Sensor Type
-        function groupBySensor() {
-            const grouped = {};
-            sensorData.forEach(data => {
-                const key = `${data.type}-${data.deviceId}`;
-                if (!grouped[key]) grouped[key] = [];
-                grouped[key].push(data);
-            });
-            return grouped;
-        }
-
-        // Get Unit for Sensor Type
-        function getUnit(type) {
-            const units = {
-                temperature: '°C',
-                humidity: '%',
-                flame: 'Digital',
-                mq2: 'ppm',
-                mq7: 'ppm',
-                status: 'Status',
-                relayStatus: 'ON/OFF'
-            };
-            return units[type] || '';
-        }
-
-        // Format Timestamp
-        function formatTime(isoString) {
-            const date = new Date(isoString);
-            return date.toLocaleString('id-ID', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-        }
-
-        // Format Value based on sensor type
-        function formatValue(value, type) {
-            if (type === 'status' || type === 'relayStatus') {
-                return value === 'ON' || value === 1 ? '✓ ON' : '✗ OFF';
+            // MQ7 CO
+            if (data.mq7 !== undefined) {
+                sensorData.mq7 = data.mq7;
+                document.getElementById('val-mq7').textContent = data.mq7.toFixed(1) + ' PPM';
+                const mq7Status = document.getElementById('status-mq7');
+                if (data.mq7 > 100) {
+                    mq7Status.textContent = '🚨 BAHAYA';
+                    mq7Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-danger';
+                } else if (data.mq7 > 50) {
+                    mq7Status.textContent = '⚠️ Peringatan';
+                    mq7Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-warning';
+                } else {
+                    mq7Status.textContent = '✅ Aman';
+                    mq7Status.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
+                }
             }
-            if (type === 'flame') {
-                return value === 1 || value === true ? '🔥 Terdeteksi' : '✓ Aman';
+
+            // Temperature
+            if (data.temperature !== undefined) {
+                sensorData.temperature = data.temperature;
+                document.getElementById('val-temperature').textContent = data.temperature.toFixed(1) + ' °C';
+                const tempStatus = document.getElementById('status-temperature');
+                if (data.temperature > 40) {
+                    tempStatus.textContent = '🔥 Tinggi';
+                    tempStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-danger';
+                } else if (data.temperature < 10) {
+                    tempStatus.textContent = '❄️ Rendah';
+                    tempStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-warning';
+                } else {
+                    tempStatus.textContent = '✅ Normal';
+                    tempStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
+                }
             }
-            return parseFloat(value).toFixed(2);
-        }
 
-        // Get sensor icon
-        function getSensorIcon(type) {
-            const icons = {
-                temperature: '🌡️',
-                humidity: '💧',
-                flame: '🔥',
-                mq2: '💨',
-                mq7: '💨',
-                status: '⚙️',
-                relayStatus: '🔌'
-            };
-            return icons[type] || '📊';
-        }
-
-        // Get sensor label
-        function getSensorLabel(type) {
-            const labels = {
-                temperature: 'Temperature (Suhu)',
-                humidity: 'Humidity (Kelembaban)',
-                flame: 'Flame (API)',
-                mq2: 'MQ2 (Gas/Asap)',
-                mq7: 'MQ7 (Karbon Monoksida)',
-                status: 'Status Perangkat',
-                relayStatus: 'Relay Status (Saklar)'
-            };
-            return labels[type] || type.toUpperCase();
-        }
-
-        // Add Log Entry
-        function addLog(message, type = 'info') {
-            const logs = document.getElementById('logsContainer');
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type === 'success' ? 'log-success' : type === 'error' ? 'log-error' : ''}`;
-            
-            const time = new Date().toLocaleTimeString('id-ID');
-            entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
-            
-            logs.insertBefore(entry, logs.firstChild);
-            
-            // Keep only latest logs
-            const entries = logs.querySelectorAll('.log-entry');
-            for (let i = MAX_LOGS; i < entries.length; i++) {
-                entries[i].remove();
+            // Relay Status
+            if (data.relay !== undefined) {
+                sensorData.relay = data.relay;
+                const relayVal = document.getElementById('val-relay');
+                const relayStatus = document.getElementById('status-relay');
+                relayVal.textContent = data.relay;
+                if (data.relay === 'ON') {
+                    relayStatus.textContent = '⚡ AKTIF';
+                    relayStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-danger';
+                } else {
+                    relayStatus.textContent = '⏻️ MATI';
+                    relayStatus.className = 'text-sm font-semibold rounded px-2 py-1 inline-block status-safe';
+                }
+                document.getElementById('ctrl-relay-status').textContent = data.relay;
             }
+
+            updateChart();
+            addToHistory('Sensor Update', 'Sensor data updated');
         }
 
-        // Show Alert
-        function showAlert(message, type = 'success') {
+        // Check for alerts
+        function checkAlerts(data) {
+            const alerts = [];
+
+            if (data.flame > 0) alerts.push('🔥 Api terdeteksi!');
+            if (data.mq2 > 1000) alerts.push('⚠️ Gas MQ2 BAHAYA! (' + data.mq2.toFixed(1) + ' PPM)');
+            if (data.mq7 > 100) alerts.push('☠️ CO MQ7 BAHAYA! (' + data.mq7.toFixed(1) + ' PPM)');
+            if (data.temperature > 40) alerts.push('🔥 Suhu TINGGI! (' + data.temperature.toFixed(1) + ' °C)');
+
             const alertBox = document.getElementById('alertBox');
-            alertBox.textContent = message;
-            alertBox.className = `alert alert-${type} show`;
-            
-            setTimeout(() => {
-                alertBox.classList.remove('show');
-            }, 3000);
+            const alertList = document.getElementById('alertList');
+
+            if (alerts.length > 0) {
+                alertBox.classList.remove('hidden');
+                alertList.innerHTML = alerts.map(alert => `<li>• ${alert}</li>`).join('');
+                alertHistory = alerts;
+            } else {
+                alertBox.classList.add('hidden');
+            }
         }
+
+        // Update system status
+        function updateSystemStatus(status = 'connected') {
+            const badge = document.getElementById('systemStatusBadge');
+            if (status === 'connected') {
+                badge.textContent = '✅ Terhubung';
+                badge.className = 'px-6 py-2 rounded-full font-bold text-lg transition-all duration-300 bg-green-500/20 text-green-400 border border-green-500/50';
+            } else if (status === 'error') {
+                badge.textContent = '❌ Terputus';
+                badge.className = 'px-6 py-2 rounded-full font-bold text-lg transition-all duration-300 bg-red-500/20 text-red-400 border border-red-500/50';
+            } else {
+                badge.textContent = '🔄 Menghubungkan...';
+                badge.className = 'px-6 py-2 rounded-full font-bold text-lg transition-all duration-300 bg-gray-800 text-gray-400';
+            }
+        }
+
+        // Chart functionality
+        function initChart() {
+            const ctx = document.getElementById('sensorChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Suhu (°C)',
+                            data: [],
+                            borderColor: '#FFA500',
+                            backgroundColor: 'rgba(255, 165, 0, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Kelembaban (%)',
+                            data: [],
+                            borderColor: '#00BCD4',
+                            backgroundColor: 'rgba(0, 188, 212, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Gas MQ2 (PPM)',
+                            data: [],
+                            borderColor: '#FF6B6B',
+                            backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#999', font: { size: 12 } }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: { color: '#999' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        x: {
+                            ticks: { color: '#999' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update chart with new data
+        function updateChart() {
+            if (!chartInstance) initChart();
+
+            const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+            // Keep only last 10 data points
+            if (chartInstance.data.labels.length > 10) {
+                chartInstance.data.labels.shift();
+                chartInstance.data.datasets.forEach(dataset => dataset.data.shift());
+            }
+
+            chartInstance.data.labels.push(now);
+            chartInstance.data.datasets[0].data.push(sensorData.temperature);
+            chartInstance.data.datasets[1].data.push(sensorData.humidity);
+            chartInstance.data.datasets[2].data.push(sensorData.mq2);
+
+            chartInstance.update('none');
+        }
+
+        // Control relay
+        function controlRelay(status) {
+            database.ref('relay').set(status)
+                .then(() => {
+                    addToHistory('Relay Control', 'Relay turned ' + status);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Add to history log
+        function addToHistory(sensor, status) {
+            const now = new Date().toLocaleTimeString('id-ID');
+            const tbody = document.getElementById('historyTableBody');
+
+            // Clear "Menunggu data" message
+            if (tbody.children.length === 1 && tbody.children[0].children.length === 3) {
+                tbody.innerHTML = '';
+            }
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-3 py-2 text-gray-400">${now}</td>
+                <td class="px-3 py-2">${sensor}</td>
+                <td class="px-3 py-2 text-brand-teal">${status}</td>
+            `;
+
+            tbody.insertBefore(row, tbody.firstChild);
+
+            // Keep only last 10 entries
+            while (tbody.children.length > 10) {
+                tbody.removeChild(tbody.lastChild);
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            initChart();
+            updateSystemStatus('connected');
+        });
     </script>
+
 </body>
+
 </html>
