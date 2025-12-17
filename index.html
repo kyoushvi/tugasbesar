@@ -238,7 +238,7 @@
       </div>
 
       <!-- CONTROL PANEL -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
         <!-- RELAY CONTROL -->
         <div class="card-glow bg-white rounded-2xl p-8">
@@ -275,28 +275,16 @@
             <p class="text-xl font-bold text-red-600" id="emergencyNumber">113</p>
           </div>
         </div>
-
-        <!-- CHART -->
-        <div class="card-glow bg-white rounded-2xl p-8">
-          <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-            <span class="bg-sky-100 p-3 rounded-lg text-2xl">📈</span>
-            Live Trends (Last 15 min)
-          </h3>
-          <div class="h-64 w-full">
-            <canvas id="sensorChart"></canvas>
-          </div>
-        </div>
       </div>
 
-        <!-- CHART -->
-        <div class="card-glow bg-white rounded-2xl p-8">
-          <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-            <span class="bg-sky-100 p-3 rounded-lg text-2xl">📈</span>
-            Live Trends (Last 15 min)
-          </h3>
-          <div class="h-64 w-full">
-            <canvas id="sensorChart"></canvas>
-          </div>
+      <!-- LIVE TRENDS CHART -->
+      <div class="card-glow bg-white rounded-2xl p-8 mb-8">
+        <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+          <span class="bg-sky-100 p-3 rounded-lg text-2xl">📈</span>
+          Live Trends (Last 15 min)
+        </h3>
+        <div class="h-64 w-full">
+          <canvas id="sensorChart"></canvas>
         </div>
       </div>
 
