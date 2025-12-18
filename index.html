@@ -54,47 +54,6 @@
     .relay-btn-active { animation: buttonClick 0.3s ease-in-out, successPulse 0.6s ease-out !important; }
     .relay-btn-inactive { animation: buttonClick 0.3s ease-in-out, errorPulse 0.6s ease-out !important; }
 
-          <div class="space-y-4">
-            <button onclick="controlRelay('ON')" class="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg">
-              💡 Turn ON
-            </button>
-            <button onclick="controlRelay('OFF')" class="w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg">
-              🔌 Turn OFF
-            </button>
-          </div>
-
-          <div class="space-y-4">
-            <button id="btn-relay-on" onclick="controlRelay('ON')" class="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg duration-300">
-              💡 Turn ON
-            </button>
-            <button id="btn-relay-off" onclick="controlRelay('OFF')" class="w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg duration-300">
-              🔌 Turn OFF
-            </button>
-          </div>
-
-    window.controlRelay = function (status) {
-      const relayRef = ref(db, "relay");
-      set(relayRef, status)
-        .then(() => addLog("Relay Control", `Relay switched to ${status}`))
-        .catch((err) => console.error(err));
-    };
-
-    window.controlRelay = function (status) {
-      const relayRef = ref(db, "relay");
-      const button = status === "ON" ? document.getElementById("btn-relay-on") : document.getElementById("btn-relay-off");
-      
-      if (button) {
-        button.classList.add(status === "ON" ? "relay-btn-active" : "relay-btn-inactive");
-        setTimeout(() => {
-          button.classList.remove(status === "ON" ? "relay-btn-active" : "relay-btn-inactive");
-        }, 600);
-      }
-      
-      set(relayRef, status)
-        .then(() => addLog("Relay Control", `Relay switched to ${status}`))
-        .catch((err) => console.error(err));
-    };
-    
     .chart-container { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 10px 30px rgba(14, 165, 233, 0.08); }
   </style>
 </head>
@@ -295,10 +254,10 @@
             Relay Control
           </h3>
           <div class="space-y-4">
-            <button onclick="controlRelay('ON')" class="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg">
+            <button id="btn-relay-on" onclick="controlRelay('ON')" class="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg duration-300">
               💡 Turn ON
             </button>
-            <button onclick="controlRelay('OFF')" class="w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg">
+            <button id="btn-relay-off" onclick="controlRelay('OFF')" class="w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg duration-300">
               🔌 Turn OFF
             </button>
           </div>
@@ -363,250 +322,256 @@
     </div>
   </div>
   
-      <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-      import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
-    
-      const firebaseConfig = {
-        apiKey: "AIzaSyCARE47-MPU9e3I122u2gUkDlrA6c1DTRo",
-        authDomain: "fireiot-14803.firebaseapp.com",
-        databaseURL: "https://fireiot-14803-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "fireiot-14803",
-        storageBucket: "fireiot-14803.firebasestorage.app",
-        messagingSenderId: "144592823648",
-        appId: "1:144592823648:web:4b8100210bd7b4d02caa05",
-        measurementId: "G-NRHDQR4JJ8"
-      };
-    
-      const app = initializeApp(firebaseConfig);
-      const db = getDatabase(app);
-    
-      let sensorData = { flame: 0, humidity: 0, mq2: 0, mq7: 0, temperature: 0, relay: "OFF" };
-      let chartInstance = null;
-    
-      // BACA DATA DARI sensorData (sesuai Firebase)
-      const sensorsRef = ref(db, "sensorData");
-      onValue(sensorsRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          updateAllDisplays(data);
-          checkAlerts(data);
-        } else {
-          updateConnectionStatus(false);
-        }
-      }, (error) => {
-        console.error(error);
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
+  
+    const firebaseConfig = {
+      apiKey: "AIzaSyCARE47-MPU9e3I122u2gUkDlrA6c1DTRo",
+      authDomain: "fireiot-14803.firebaseapp.com",
+      databaseURL: "https://fireiot-14803-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "fireiot-14803",
+      storageBucket: "fireiot-14803.firebasestorage.app",
+      messagingSenderId: "144592823648",
+      appId: "1:144592823648:web:4b8100210bd7b4d02caa05",
+      measurementId: "G-NRHDQR4JJ8"
+    };
+  
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+  
+    let sensorData = { flame: 0, humidity: 0, mq2: 0, mq7: 0, temperature: 0, relay: "OFF" };
+    let chartInstance = null;
+  
+    // ===== BACA DATA DARI sensorData =====
+    const sensorsRef = ref(db, "sensorData");
+    onValue(sensorsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        window.updateAllDisplays(data);
+        window.checkAlerts(data);
+      } else {
         updateConnectionStatus(false);
-      });
-    
-      // KONTROL RELAY + EFEK TOMBOL
-      window.controlRelay = function (status) {
-        const relayRef = ref(db, "sensorData/relay");
-        const button = status === "ON"
-          ? document.getElementById("btn-relay-on")
-          : document.getElementById("btn-relay-off");
-    
-        if (button) {
-          button.classList.add(status === "ON" ? "relay-btn-active" : "relay-btn-inactive");
-          setTimeout(() => {
-            button.classList.remove(status === "ON" ? "relay-btn-active" : "relay-btn-inactive");
-          }, 600);
-        }
-    
-        set(relayRef, status)
-          .then(() => addLog("Relay Control", `Relay switched to ${status}`))
-          .catch((err) => console.error(err));
-      };
-    
-      window.toggleSidebar = function () {
-        const sidebar = document.getElementById("sidebar");
-        sidebar.classList.toggle("hidden");
-      };
-    
-      window.emergencyCall = function () {
-        const phoneNumber = "113";
-        const confirmCall = confirm(`📞 Telepon ke Pemadam Kebakaran?\n\nNomor: ${phoneNumber}\n\nTekan OK untuk melanjutkan`);
-        if (confirmCall) {
-          window.location.href = `tel:${phoneNumber}`;
-          addLog("Emergency Call", "Fire Department Called (113)");
-        }
-      };
-    
-      window.updateAllDisplays = function (data) {
-        if (data.temperature !== undefined) {
-          sensorData.temperature = data.temperature;
-          updateSensorCard(
-            "temperature",
-            data.temperature.toFixed(1),
-            "°C",
-            data.temperature > 40 ? "danger" : data.temperature < 10 ? "warn" : "safe",
-            data.temperature > 40 ? "🔥 High" : data.temperature < 10 ? "❄️ Low" : "✓ Normal"
-          );
-          document.getElementById("statTemp").textContent = data.temperature.toFixed(1) + "°C";
-        }
-    
-        if (data.humidity !== undefined) {
-          sensorData.humidity = data.humidity;
-          updateSensorCard(
-            "humidity",
-            data.humidity.toFixed(1),
-            "%",
-            data.humidity < 30 || data.humidity > 70 ? "warn" : "safe",
-            data.humidity < 30 ? "⬇️ Low" : data.humidity > 70 ? "⬆️ High" : "✓ Normal"
-          );
-          document.getElementById("statHumidity").textContent = data.humidity.toFixed(1) + "%";
-        }
-    
-        if (data.flame !== undefined) {
-          sensorData.flame = data.flame;
-          updateSensorCard(
-            "flame",
-            data.flame,
-            "",
-            data.flame > 0 ? "danger" : "safe",
-            data.flame > 0 ? "🔥 Detected" : "✓ Safe"
-          );
-        }
-    
-        if (data.mq2 !== undefined) {
-          sensorData.mq2 = data.mq2;
-          updateSensorCard(
-            "mq2",
-            data.mq2.toFixed(1),
-            "PPM",
-            data.mq2 > 1000 ? "danger" : data.mq2 > 500 ? "warn" : "safe",
-            data.mq2 > 1000 ? "🚨 Danger" : data.mq2 > 500 ? "⚠️ Warning" : "✓ Safe"
-          );
-        }
-    
-        if (data.mq7 !== undefined) {
-          sensorData.mq7 = data.mq7;
-          updateSensorCard(
-            "mq7",
-            data.mq7.toFixed(1),
-            "PPM",
-            data.mq7 > 100 ? "danger" : data.mq7 > 50 ? "warn" : "safe",
-            data.mq7 > 100 ? "🚨 Danger" : data.mq7 > 50 ? "⚠️ Warning" : "✓ Safe"
-          );
-        }
-    
-        if (data.relay !== undefined) {
-          sensorData.relay = data.relay;
-          const relayStatus = data.relay === "ON" ? "warn" : "safe";
-          const relayText = data.relay === "ON" ? "⚡ Active" : "✓ Offline";
-          updateSensorCard("relay", data.relay, "", relayStatus, relayText);
-          document.getElementById("relayState").textContent = data.relay;
-        }
-    
-        updateChart();
-        addLog("Sensor Update", "All sensors updated");
-        updateConnectionStatus(true);
-      };
-    
-      function updateSensorCard(sensor, value, unit, status, statusText) {
-        const valEl = document.getElementById(`val-${sensor}`);
-        const statusEl = document.getElementById(`status-${sensor}`);
-        if (valEl) valEl.textContent = value;
-        if (statusEl) {
-          statusEl.textContent = statusText;
-          statusEl.className = `badge-${status} text-xs font-semibold py-2 px-3 rounded-lg inline-block`;
-        }
       }
-    
-      window.checkAlerts = function (data) {
-        const alerts = [];
-        if (data.flame > 0) alerts.push("🔥 Flame detected!");
-        if (data.mq2 > 1000) alerts.push(`⚠️ High gas level: ${data.mq2.toFixed(0)} PPM`);
-        if (data.mq7 > 100) alerts.push(`☠️ CO level critical: ${data.mq7.toFixed(0)} PPM`);
-        if (data.temperature > 40) alerts.push(`🔥 Temperature critical: ${data.temperature.toFixed(0)}°C`);
-    
-        const alertSection = document.getElementById("alertSection");
-        const alertList = document.getElementById("alertList");
-    
-        if (alerts.length > 0) {
-          alertSection.classList.remove("hidden");
-          alertList.innerHTML = alerts.map(a => `<li>• ${a}</li>`).join("");
-        } else {
-          alertSection.classList.add("hidden");
-        }
-      };
-    
-      function updateConnectionStatus(connected) {
-        const statusEl = document.getElementById("connectionStatus");
-        if (statusEl) {
-          statusEl.textContent = connected ? "Connected" : "Disconnected";
-          statusEl.parentElement.querySelector("span").className =
-            connected ? "w-3 h-3 bg-emerald-500 rounded-full pulse-dot" : "w-3 h-3 bg-rose-500 rounded-full";
-        }
+    }, (error) => {
+      console.error("Firebase Error:", error);
+      updateConnectionStatus(false);
+    });
+  
+    // ===== KONTROL RELAY + EFEK TOMBOL (DIPERBAIKI) =====
+    window.controlRelay = function (status) {
+      const relayRef = ref(db, "sensorData/relay");
+      const button = status === "ON" 
+        ? document.getElementById("btn-relay-on") 
+        : document.getElementById("btn-relay-off");
+  
+      if (button) {
+        button.classList.add(status === "ON" ? "relay-btn-active" : "relay-btn-inactive");
+        setTimeout(() => {
+          button.classList.remove(status === "ON" ? "relay-btn-active" : "relay-btn-inactive");
+        }, 600);
       }
-    
-      function initChart() {
-        const ctx = document.getElementById("sensorChart").getContext("2d");
-        chartInstance = new Chart(ctx, {
-          type: "line",
-          data: {
-            labels: [],
-            datasets: [
-              { label: "Temp (°C)", data: [], borderColor: "#f59e0b", backgroundColor: "rgba(245, 158, 11, 0.1)", borderWidth: 3, fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: "#f59e0b" },
-              { label: "Humidity (%)", data: [], borderColor: "#0ea5e9", backgroundColor: "rgba(14, 165, 233, 0.1)", borderWidth: 3, fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: "#0ea5e9" },
-              { label: "MQ2 (PPM)", data: [], borderColor: "#ef4444", backgroundColor: "rgba(239, 68, 68, 0.1)", borderWidth: 3, fill: false, tension: 0.4, pointRadius: 4, pointBackgroundColor: "#ef4444" },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { labels: { color: "#6b7280", font: { size: 13, weight: 600 }, padding: 15 } },
-              filler: { propagate: true }
-            },
-            scales: {
-              y: { ticks: { color: "#9ca3af", font: { size: 12 } }, grid: { color: "rgba(0, 0, 0, 0.05)" }, beginAtZero: true },
-              x: { ticks: { color: "#9ca3af", font: { size: 12 } }, grid: { color: "rgba(0, 0, 0, 0.05)" } },
-            },
-          },
+  
+      set(relayRef, status)
+        .then(() => {
+          console.log(`✓ Relay set to ${status}`);
+          window.addLog("Relay Control", `Relay switched to ${status}`);
+        })
+        .catch((err) => {
+          console.error("Error setting relay:", err);
+          window.addLog("Relay Control Error", err.message);
         });
+    };
+  
+    window.toggleSidebar = function () {
+      const sidebar = document.getElementById("sidebar");
+      sidebar.classList.toggle("hidden");
+    };
+  
+    window.emergencyCall = function () {
+      const phoneNumber = "113";
+      const confirmCall = confirm(`📞 Telepon ke Pemadam Kebakaran?\n\nNomor: ${phoneNumber}\n\nTekan OK untuk melanjutkan`);
+      if (confirmCall) {
+        window.location.href = `tel:${phoneNumber}`;
+        window.addLog("Emergency Call", "Fire Department Called (113)");
       }
-    
-      window.updateChart = function () {
-        if (!chartInstance) return;
-        const now = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-    
-        if (chartInstance.data.labels.length >= 15) {
-          chartInstance.data.labels.shift();
-          chartInstance.data.datasets.forEach(d => d.data.shift());
-        }
-    
-        chartInstance.data.labels.push(now);
-        chartInstance.data.datasets[0].data.push(sensorData.temperature);
-        chartInstance.data.datasets[1].data.push(sensorData.humidity);
-        chartInstance.data.datasets[2].data.push(sensorData.mq2);
-        chartInstance.update("none");
-      };
-    
-      window.addLog = function (event, status) {
-        const time = new Date().toLocaleTimeString("id-ID");
-        const tbody = document.getElementById("activityLog");
-    
-        if (tbody.children.length === 1 && tbody.children[0].children[0].colSpan === 3) {
-          tbody.innerHTML = "";
-        }
-    
-        const row = document.createElement("tr");
-        row.className = "hover:bg-gray-50 transition";
-        row.innerHTML = `
-          <td class="py-4 px-4 text-gray-600">${time}</td>
-          <td class="py-4 px-4 font-medium text-gray-900">${event}</td>
-          <td class="py-4 px-4"><span class="inline-block bg-sky-100 text-sky-700 px-3 py-1 rounded-full text-xs font-semibold">${status}</span></td>
-        `;
-    
-        tbody.insertBefore(row, tbody.firstChild);
-        while (tbody.children.length > 12) tbody.removeChild(tbody.lastChild);
-      };
-    
-      window.addEventListener("load", () => {
-        initChart();
-        updateConnectionStatus(false);
+    };
+  
+    window.updateAllDisplays = function (data) {
+      if (data.temperature !== undefined) {
+        sensorData.temperature = data.temperature;
+        updateSensorCard(
+          "temperature",
+          data.temperature.toFixed(1),
+          "°C",
+          data.temperature > 40 ? "danger" : data.temperature < 10 ? "warn" : "safe",
+          data.temperature > 40 ? "🔥 High" : data.temperature < 10 ? "❄️ Low" : "✓ Normal"
+        );
+        document.getElementById("statTemp").textContent = data.temperature.toFixed(1) + "°C";
+      }
+  
+      if (data.humidity !== undefined) {
+        sensorData.humidity = data.humidity;
+        updateSensorCard(
+          "humidity",
+          data.humidity.toFixed(1),
+          "%",
+          data.humidity < 30 || data.humidity > 70 ? "warn" : "safe",
+          data.humidity < 30 ? "⬇️ Low" : data.humidity > 70 ? "⬆️ High" : "✓ Normal"
+        );
+        document.getElementById("statHumidity").textContent = data.humidity.toFixed(1) + "%";
+      }
+  
+      if (data.flame !== undefined) {
+        sensorData.flame = data.flame;
+        updateSensorCard(
+          "flame",
+          data.flame,
+          "",
+          data.flame > 0 ? "danger" : "safe",
+          data.flame > 0 ? "🔥 Detected" : "✓ Safe"
+        );
+      }
+  
+      if (data.mq2 !== undefined) {
+        sensorData.mq2 = data.mq2;
+        updateSensorCard(
+          "mq2",
+          data.mq2.toFixed(1),
+          "PPM",
+          data.mq2 > 1000 ? "danger" : data.mq2 > 500 ? "warn" : "safe",
+          data.mq2 > 1000 ? "🚨 Danger" : data.mq2 > 500 ? "⚠️ Warning" : "✓ Safe"
+        );
+      }
+  
+      if (data.mq7 !== undefined) {
+        sensorData.mq7 = data.mq7;
+        updateSensorCard(
+          "mq7",
+          data.mq7.toFixed(1),
+          "PPM",
+          data.mq7 > 100 ? "danger" : data.mq7 > 50 ? "warn" : "safe",
+          data.mq7 > 100 ? "🚨 Danger" : data.mq7 > 50 ? "⚠️ Warning" : "✓ Safe"
+        );
+      }
+  
+      if (data.relay !== undefined) {
+        sensorData.relay = data.relay;
+        const relayStatus = data.relay === "ON" ? "warn" : "safe";
+        const relayText = data.relay === "ON" ? "⚡ Active" : "✓ Offline";
+        updateSensorCard("relay", data.relay, "", relayStatus, relayText);
+        document.getElementById("relayState").textContent = data.relay;
+      }
+  
+      window.updateChart();
+      window.addLog("Sensor Update", "All sensors updated");
+      updateConnectionStatus(true);
+    };
+  
+    function updateSensorCard(sensor, value, unit, status, statusText) {
+      const valEl = document.getElementById(`val-${sensor}`);
+      const statusEl = document.getElementById(`status-${sensor}`);
+      if (valEl) valEl.textContent = value;
+      if (statusEl) {
+        statusEl.textContent = statusText;
+        statusEl.className = `badge-${status} text-xs font-semibold py-2 px-3 rounded-lg inline-block`;
+      }
+    }
+  
+    window.checkAlerts = function (data) {
+      const alerts = [];
+      if (data.flame > 0) alerts.push("🔥 Flame detected!");
+      if (data.mq2 > 1000) alerts.push(`⚠️ High gas level: ${data.mq2.toFixed(0)} PPM`);
+      if (data.mq7 > 100) alerts.push(`☠️ CO level critical: ${data.mq7.toFixed(0)} PPM`);
+      if (data.temperature > 40) alerts.push(`🔥 Temperature critical: ${data.temperature.toFixed(0)}°C`);
+  
+      const alertSection = document.getElementById("alertSection");
+      const alertList = document.getElementById("alertList");
+  
+      if (alerts.length > 0) {
+        alertSection.classList.remove("hidden");
+        alertList.innerHTML = alerts.map(a => `<li>• ${a}</li>`).join("");
+      } else {
+        alertSection.classList.add("hidden");
+      }
+    };
+  
+    function updateConnectionStatus(connected) {
+      const statusEl = document.getElementById("connectionStatus");
+      if (statusEl) {
+        statusEl.textContent = connected ? "Connected" : "Disconnected";
+        statusEl.parentElement.querySelector("span").className =
+          connected ? "w-3 h-3 bg-emerald-500 rounded-full pulse-dot" : "w-3 h-3 bg-rose-500 rounded-full";
+      }
+    }
+  
+    function initChart() {
+      const ctx = document.getElementById("sensorChart").getContext("2d");
+      chartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            { label: "Temp (°C)", data: [], borderColor: "#f59e0b", backgroundColor: "rgba(245, 158, 11, 0.1)", borderWidth: 3, fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: "#f59e0b" },
+            { label: "Humidity (%)", data: [], borderColor: "#0ea5e9", backgroundColor: "rgba(14, 165, 233, 0.1)", borderWidth: 3, fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: "#0ea5e9" },
+            { label: "MQ2 (PPM)", data: [], borderColor: "#ef4444", backgroundColor: "rgba(239, 68, 68, 0.1)", borderWidth: 3, fill: false, tension: 0.4, pointRadius: 4, pointBackgroundColor: "#ef4444" },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: "#6b7280", font: { size: 13, weight: 600 }, padding: 15 } },
+            filler: { propagate: true }
+          },
+          scales: {
+            y: { ticks: { color: "#9ca3af", font: { size: 12 } }, grid: { color: "rgba(0, 0, 0, 0.05)" }, beginAtZero: true },
+            x: { ticks: { color: "#9ca3af", font: { size: 12 } }, grid: { color: "rgba(0, 0, 0, 0.05)" } },
+          },
+        },
       });
-    </script>
+    }
+  
+    window.updateChart = function () {
+      if (!chartInstance) return;
+      const now = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  
+      if (chartInstance.data.labels.length >= 15) {
+        chartInstance.data.labels.shift();
+        chartInstance.data.datasets.forEach(d => d.data.shift());
+      }
+  
+      chartInstance.data.labels.push(now);
+      chartInstance.data.datasets[0].data.push(sensorData.temperature);
+      chartInstance.data.datasets[1].data.push(sensorData.humidity);
+      chartInstance.data.datasets[2].data.push(sensorData.mq2);
+      chartInstance.update("none");
+    };
+  
+    window.addLog = function (event, status) {
+      const time = new Date().toLocaleTimeString("id-ID");
+      const tbody = document.getElementById("activityLog");
+  
+      if (tbody.children.length === 1 && tbody.children[0].children[0].colSpan === 3) {
+        tbody.innerHTML = "";
+      }
+  
+      const row = document.createElement("tr");
+      row.className = "hover:bg-gray-50 transition";
+      row.innerHTML = `
+        <td class="py-4 px-4 text-gray-600">${time}</td>
+        <td class="py-4 px-4 font-medium text-gray-900">${event}</td>
+        <td class="py-4 px-4"><span class="inline-block bg-sky-100 text-sky-700 px-3 py-1 rounded-full text-xs font-semibold">${status}</span></td>
+      `;
+  
+      tbody.insertBefore(row, tbody.firstChild);
+      while (tbody.children.length > 12) tbody.removeChild(tbody.lastChild);
+    };
+  
+    window.addEventListener("load", () => {
+      initChart();
+      updateConnectionStatus(false);
+    });
+  </script>
 </body>
 </html>
